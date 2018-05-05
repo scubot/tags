@@ -69,5 +69,5 @@ class Tagging(BotModule):
                     send_msg = "[!] This tag does not exist."
                     await client.send_message(message.channel, send_msg)
                 else:
-                    send_msg = self.module_db.get(target.tag == msg[2])['content']
+                    send_msg = self.module_db.get(target.tag == msg[1])['content']
                     await client.send_message(message.channel, send_msg)
