@@ -26,7 +26,7 @@ class Tagging(BotModule):
         target = Query()
         if len(msg) > 1:
             if len(msg) > 2:
-                msg[2] = msg[2].lower
+                msg[2] = msg[2].lower()
             if msg[1] == "new":
                 if msg[2] in self.protected_names:
                     send_msg = "[!] The tag you are trying to create is a protected name. Please choose another name."
@@ -67,7 +67,7 @@ class Tagging(BotModule):
                         send_msg = "[:ok_hand:] Tag removed."
                         await client.send_message(message.channel, send_msg)
             else:
-                msg[1] = msg[1].lower
+                msg[1] = msg[1].lower()
                 if self.module_db.get(target.tag == msg[1]) is None:
                     send_msg = "[!] This tag does not exist."
                     await client.send_message(message.channel, send_msg)
