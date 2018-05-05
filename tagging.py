@@ -65,7 +65,7 @@ class Tagging(BotModule):
                         send_msg = "[:ok_hand:] Tag removed."
                         await client.send_message(message.channel, send_msg)
             else:
-                if self.module_db.get(target.tag == msg[2]) is None:
+                if self.module_db.get(target.tag == msg[1]) is None:
                     send_msg = "[!] This tag does not exist."
                     await client.send_message(message.channel, send_msg)
                 else:
