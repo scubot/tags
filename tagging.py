@@ -54,6 +54,16 @@ class Tagging(BotModule):
                         self.module_db.update({'content': msg[3]}, target.tag == msg[2])
                         send_msg = "[:ok_hand:] Tag updated."
                         await client.send_message(message.channel, send_msg)
+            elif msg[1] == "list": # This is completely untested, plz test before prod
+                if len(msg) != 2:
+                    send_msg = "[!] Invalid arguments."
+                    await client.send_message(message.channel, send_msg)
+                else:
+                    send_msg = "The following tags exist: \n"
+                    for i in self.module_db:
+                        send_msg += "\n"
+                        send_msg += i.tag
+                    await client.send_message(message.channel, send_msg)
             elif msg[1] == "remove":
                 if len(msg) != 3:
                     send_msg = "[!] Invalid arguments."
