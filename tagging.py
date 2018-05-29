@@ -19,7 +19,7 @@ class Tagging(BotModule):
 
     listen_for_reaction = False
 
-    protected_names = ['new', 'edit', 'remove'] # These are protected names that cannot be used as a tag.
+    protected_names = ['new', 'edit', 'remove', 'list'] # These are protected names that cannot be used as a tag.
 
     async def parse_command(self, message, client):
         msg = shlex.split(message.content)
@@ -54,16 +54,6 @@ class Tagging(BotModule):
                         self.module_db.update({'content': msg[3]}, target.tag == msg[2])
                         send_msg = "[:ok_hand:] Tag updated."
                         await client.send_message(message.channel, send_msg)
-            elif msg[1] == "list": # This is completely untested, plz test before prod
-                if len(msg) != 2:
-                    send_msg = "[!] Invalid arguments."
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    send_msg = "The following tags exist: \n"
-                    for i in self.module_db:
-                        send_msg += "\n"
-                        send_msg += i.tag
-                    await client.send_message(message.channel, send_msg)
             elif msg[1] == "remove":
                 if len(msg) != 3:
                     send_msg = "[!] Invalid arguments."
@@ -76,6 +66,16 @@ class Tagging(BotModule):
                         self.module_db.remove(target.tag == msg[2])
                         send_msg = "[:ok_hand:] Tag removed."
                         await client.send_message(message.channel, send_msg)
+            elif msg[1] == "list": # This is completely untested, plz test before prod
+                if len(msg) > 2:
+                    send_msg = "[!] Too many arguments"
+                    await client.send_message(message.channel, send_msg)
+                else:
+                    send_msg = "The following tags exist: \n"
+                    for i in self.module_db:
+                        send_msg += "\n"
+                        send_msg += i.tag
+                    await client.send_message(message.channel, send_msg)
             else:
                 msg[1] = msg[1].lower()
                 if self.module_db.get(target.tag == msg[1]) is None:
