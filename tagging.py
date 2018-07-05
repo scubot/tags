@@ -16,7 +16,7 @@ class Tagging(BotModule):
 
     trigger_string = 'tag'
 
-    module_version = '1.0.0'
+    module_version = '1.1.0'
 
     listen_for_reaction = False
 
@@ -77,8 +77,8 @@ class Tagging(BotModule):
                         send_msg = "[!] This tag does not exist."
                         await client.send_message(message.channel, send_msg)
                     else:
-                        owner_name = await client.get_user_info(tag['userid']).name
-                        send_msg = "[:ok_hand:] This tag was created by: **{}**".format(owner_name)
+                        owner = await client.get_user_info(tag['userid'])
+                        send_msg = "This tag was created by: **{}**".format(owner.name)
                         await client.send_message(message.channel, send_msg)
             else:
                 msg[1] = msg[1].lower()
