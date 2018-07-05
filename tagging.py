@@ -74,7 +74,7 @@ class Tagging(BotModule):
                     send_msg = "The following tags exist: \n"
                     for i in self.module_db:
                         send_msg += "\n"
-                        send_msg += i.tag
+                        send_msg += i['tag']
                     await client.send_message(message.channel, send_msg)
             else:
                 msg[1] = msg[1].lower()
