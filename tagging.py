@@ -11,15 +11,16 @@ class Tagging(BotModule):
     help_text = '`!tag new [name] [content]` to create a new tag. \n' \
                 '`!tag edit [name] [newcontent]` to edit an existing tag. You must be the creator of the tag to edit it.\n' \
                 '`!tag remove [name]` to remove a tag. You must be the creator of the tag to remove it.\n' \
-                '`!tag [name]` to retrieve a tag.'
+                '`!tag owner [name]` to fetch the user who created a tag and is able to make changes to it.\n' \
+                '`!tag [name]` to retrieve a tag.' 
 
     trigger_string = 'tag'
 
-    module_version = '1.0.0'
+    module_version = '1.1.0'
 
     listen_for_reaction = False
 
-    protected_names = ['new', 'edit', 'remove', 'list'] # These are protected names that cannot be used as a tag.
+    protected_names = ['new', 'edit', 'remove', 'owner', 'list'] # These are protected names that cannot be used as a tag.
 
     async def parse_command(self, message, client):
         msg = shlex.split(message.content)
@@ -76,6 +77,19 @@ class Tagging(BotModule):
                         send_msg += "\n"
                         send_msg += i['tag']
                     await client.send_message(message.channel, send_msg)
+            elif msg[1] == "owner":
+                if len(msg) != 3:
+                    send_msg = "[!] Invalid arguments."
+                    await client.send_message(message.channel, send_msg)
+                else:
+                    tag = self.module_db.get(target.tag == msg[2])
+                    if tag is None:
+                        send_msg = "[!] This tag does not exist."
+                        await client.send_message(message.channel, send_msg)
+                    else:
+                        owner = await client.get_user_info(tag['userid'])
+                        send_msg = "This tag was created by: **{}**".format(owner.name)
+                        await client.send_message(message.channel, send_msg)
             else:
                 msg[1] = msg[1].lower()
                 if self.module_db.get(target.tag == msg[1]) is None:
