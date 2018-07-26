@@ -11,15 +11,16 @@ class Tagging(BotModule):
     help_text = '`!tag new [name] [content]` to create a new tag. \n' \
                 '`!tag edit [name] [newcontent]` to edit an existing tag. You must be the creator of the tag to edit it.\n' \
                 '`!tag remove [name]` to remove a tag. You must be the creator of the tag to remove it.\n' \
-                '`!tag [name]` to retrieve a tag.'
+                '`!tag owner [name]` to fetch the user who created a tag and is able to make changes to it.\n' \
+                '`!tag [name]` to retrieve a tag.' 
 
     trigger_string = 'tag'
 
-    module_version = '1.0.0'
+    module_version = '1.1.0'
 
     listen_for_reaction = False
 
-    protected_names = ['new', 'edit', 'remove'] # These are protected names that cannot be used as a tag.
+    protected_names = ['new', 'edit', 'remove', 'owner'] # These are protected names that cannot be used as a tag.
 
     async def parse_command(self, message, client):
         msg = shlex.split(message.content)
@@ -65,6 +66,19 @@ class Tagging(BotModule):
                     else:
                         self.module_db.remove(target.tag == msg[2])
                         send_msg = "[:ok_hand:] Tag removed."
+                        await client.send_message(message.channel, send_msg)
+            elif msg[1] == "owner":
+                if len(msg) != 3:
+                    send_msg = "[!] Invalid arguments."
+                    await client.send_message(message.channel, send_msg)
+                else:
+                    tag = self.module_db.get(target.tag == msg[2])
+                    if not tag:
+                        send_msg = "[!] This tag does not exist."
+                        await client.send_message(message.channel, send_msg)
+                    else:
+                        owner = await client.get_user_info(tag['userid'])
+                        send_msg = "This tag was created by: **{}**".format(owner.name)
                         await client.send_message(message.channel, send_msg)
             else:
                 msg[1] = msg[1].lower()
