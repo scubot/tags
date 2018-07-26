@@ -73,7 +73,7 @@ class Tagging(BotModule):
                     await client.send_message(message.channel, send_msg)
                 else:
                     tag = self.module_db.get(target.tag == msg[2])
-                    if not tag:
+                    if tag is None:
                         send_msg = "[!] This tag does not exist."
                         await client.send_message(message.channel, send_msg)
                     else:
