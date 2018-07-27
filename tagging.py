@@ -40,9 +40,10 @@ class Tagging(BotModule):
                         if self.module_db.get(target.tag == msg[2]) is not None:
                             send_msg = "[!] This tag already exists."
                             await client.send_message(message.channel, send_msg)
-                        self.module_db.insert({'userid': message.author.id, 'tag': msg[2], 'content': msg[3]})
-                        send_msg = "[:ok_hand:] Tag added."
-                        await client.send_message(message.channel, send_msg)
+                        else:
+                            self.module_db.insert({'userid': message.author.id, 'tag': msg[2], 'content': msg[3]})
+                            send_msg = "[:ok_hand:] Tag added."
+                            await client.send_message(message.channel, send_msg)
             elif msg[1] == "edit":
                 if len(msg) != 4:
                     send_msg = "[!] Invalid arguments."
