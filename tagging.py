@@ -1,7 +1,26 @@
 import discord
 from modules.botModule import *
 import shlex
+from tinydb import TinyDB, Query
 import time
+import modules.reactionscroll as rs
+import asyncio
+
+
+class TaggingScrollable(rs.Scrollable):
+    def preprocess(self, message, module_db):
+        ret = []
+        for item in module_db:
+            owner = message.server.get_member(item['userid'])
+            ret.append([item['tag'], owner.name])
+        return ret
+
+    def refresh(self, message, module_db):
+        self.processed_data.clear()
+        self.embeds.clear()
+        self.processed_data = self.preprocess(message, module_db)
+        self.create_embeds()
+
 
 class Tagging(BotModule):
     name = 'tagging'
@@ -18,11 +37,37 @@ class Tagging(BotModule):
 
     module_version = '1.1.0'
 
-    listen_for_reaction = False
+    listen_for_reaction = True
 
     protected_names = ['new', 'edit', 'remove', 'owner', 'list'] # These are protected names that cannot be used as a tag.
 
+    module_db = TinyDB('./modules/databases/' + name)
+
+    message_returns = []
+
+    scroll = TaggingScrollable(limit=6, color=0xc0fefe, table=module_db, title="List of tags", inline=True)
+
+    async def contains_returns(self, message):
+        for x in self.message_returns:
+            if message.id == x[0].id:
+                return True
+        return False
+
+    async def find_pos(self, message):
+        for x in self.message_returns:
+            if message.id == x[0].id:
+                return x[1]
+
+    async def update_pos(self, message, ty):
+        for x in self.message_returns:
+            if message.id == x[0].id:
+                if ty == 'next':
+                    x[1] += 1
+                if ty == 'prev':
+                    x[1] -= 1
+
     async def parse_command(self, message, client):
+        self.scroll.refresh(message, self.module_db)
         msg = shlex.split(message.content)
         target = Query()
         if len(msg) > 1:
@@ -73,11 +118,10 @@ class Tagging(BotModule):
                     send_msg = "[!] Too many arguments"
                     await client.send_message(message.channel, send_msg)
                 else:
-                    send_msg = "The following tags exist: \n"
-                    for i in self.module_db:
-                        send_msg += "\n"
-                        send_msg += i['tag']
-                    await client.send_message(message.channel, send_msg)
+                    m_ret = await client.send_message(message.channel, embed=self.scroll.initial_embed())
+                    self.message_returns.append([m_ret, 0])
+                    await client.add_reaction(m_ret, "⏪")
+                    await client.add_reaction(m_ret, "⏩")
             elif msg[1] == "owner":
                 if len(msg) != 3:
                     send_msg = "[!] Invalid arguments."
@@ -99,3 +143,20 @@ class Tagging(BotModule):
                 else:
                     send_msg = self.module_db.get(target.tag == msg[1])['content']
                     await client.send_message(message.channel, send_msg)
+
+    async def on_reaction_add(self, reaction, client, user):
+        if not await self.contains_returns(reaction.message):
+            return 0
+        pos = await self.find_pos(reaction.message)
+        react_text = reaction.emoji
+        if type(reaction.emoji) is not str:
+            react_text = reaction.emoji.name
+        if react_text == "⏩":
+            embed = self.scroll.next(current_pos=pos)
+            await client.edit_message(reaction.message, embed=embed)
+            await self.update_pos(reaction.message, 'next')
+        if react_text == "⏪":
+            embed = self.scroll.previous(current_pos=pos)
+            await client.edit_message(reaction.message, embed=embed)
+            await self.update_pos(reaction.message, 'prev')
+
