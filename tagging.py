@@ -8,17 +8,17 @@ import asyncio
 
 
 class TaggingScrollable(rs.Scrollable):
-    async def preprocess(self, client, module_db):
+    def preprocess(self, client, module_db):
         ret = []
         for item in module_db:
-            owner = await client.get_user_info(item['userid'])
+            owner = discord.utils.get(client.get_all_members(), id=item['userid'])
             ret.append([item['tag'], owner.name])
         return ret
 
-    async def refresh(self, client, module_db):
+    def refresh(self, client, module_db):
         self.processed_data.clear()
         self.embeds.clear()
-        self.processed_data = await self.preprocess(client, module_db)
+        self.processed_data = self.preprocess(client, module_db)
         self.create_embeds()
 
 
@@ -67,7 +67,7 @@ class Tagging(BotModule):
                     x[1] -= 1
 
     async def parse_command(self, message, client):
-        await self.scroll.refresh(client, self.module_db)
+        self.scroll.refresh(client, self.module_db)
         msg = shlex.split(message.content)
         target = Query()
         if len(msg) > 1:
