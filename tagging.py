@@ -71,7 +71,7 @@ class Tagging(BotModule):
                     x[1] -= 1
 
     async def parse_command(self, message, client):
-        self.scroll.refresh(client, self.module_db)
+        await self.scroll.refresh(client, self.module_db)
         msg = shlex.split(message.content)
         target = Query()
         if len(msg) > 1:
