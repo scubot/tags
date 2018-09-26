@@ -39,7 +39,7 @@ class Tagging(BotModule):
 
     trigger_string = 'tag'
 
-    module_version = '1.1.0'
+    module_version = '1.1.1'
 
     listen_for_reaction = True
 
