@@ -12,6 +12,10 @@ class TaggingScrollable(rs.Scrollable):
         ret = []
         for item in module_db:
             owner = discord.utils.get(client.get_all_members(), id=item['userid'])
+            if not owner:
+                owner = client.get_user_info(item['userid'])
+                if not owner:
+                    ret.append([item['tag'], "N/A"])
             ret.append([item['tag'], owner.name])
         return ret
 
