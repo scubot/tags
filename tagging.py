@@ -8,21 +8,21 @@ import asyncio
 
 
 class TaggingScrollable(rs.Scrollable):
-    def preprocess(self, client, module_db):
+    async def preprocess(self, client, module_db):
         ret = []
         for item in module_db:
             owner = discord.utils.get(client.get_all_members(), id=item['userid'])
             if not owner:
-                owner = client.get_user_info(item['userid'])
+                owner = await client.get_user_info(item['userid'])
                 if not owner:
                     ret.append([item['tag'], "N/A"])
             ret.append([item['tag'], owner.name])
         return ret
 
-    def refresh(self, client, module_db):
+    async def refresh(self, client, module_db):
         self.processed_data.clear()
         self.embeds.clear()
-        self.processed_data = self.preprocess(client, module_db)
+        self.processed_data = await self.preprocess(client, module_db)
         self.create_embeds()
 
 
