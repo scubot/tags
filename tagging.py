@@ -9,11 +9,18 @@ import asyncio
 
 class TaggingScrollable(rs.Scrollable):
     async def preprocess(self, client, module_db):
+        fallback_users = {}
         ret = []
         for item in module_db:
             owner = discord.utils.get(client.get_all_members(), id=item['userid'])
             if not owner:
-                owner = await client.get_user_info(item['userid'])
+                # First try getting from caching dict
+                try:
+                    owner = fallback_users[item['userid']]
+                except KeyError:
+                    # If we can't find it, then use the slow fetch.
+                    owner = await client.get_user_info(item['userid'])
+                    fallback_users[item['userid']] = owner
                 if not owner:
                     ret.append([item['tag'], "N/A"])
             ret.append([item['tag'], owner.name])
