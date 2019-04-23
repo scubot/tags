@@ -138,11 +138,11 @@ class Tagging(commands.Cog):
             react_text = reaction.emoji.name
             if react_text == "⏩":
                 embed = self.scroll.next(current_pos=pos)
-                await self.bot.edit_message(reaction.message, embed=embed)
+                await reaction.message.edit(embed=embed)
                 await self.update_pos(reaction.message, 'next')
             if react_text == "⏪":
                 embed = self.scroll.previous(current_pos=pos)
-                await self.bot.edit_message(reaction.message, embed=embed)
+                await reaction.message.edit(embed=embed)
                 await self.update_pos(reaction.message, 'prev')
 
 
