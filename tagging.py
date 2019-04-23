@@ -4,9 +4,6 @@ from discord.utils import find
 from tinydb import TinyDB, Query
 import modules.reactionscroll as rs
 
-# Broken right now. Fix for rewrite.
-
-
 class TaggingScrollable(rs.Scrollable):
     async def preprocess(self, bot, db):
         fallback_users = {}
@@ -128,8 +125,8 @@ class Tagging(commands.Cog):
         await self.scroll.refresh(self.bot, self.db)
         m = await ctx.send(embed=self.scroll.initial_embed())
         self.scrolling_cache.append([m, 0])
-        await ctx.add_reaction(m, "⏪")
-        await ctx.add_reaction(m, "⏩")
+        await m.add_reaction("⏪")
+        await m.add_reaction("⏩")
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
