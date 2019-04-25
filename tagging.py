@@ -16,7 +16,7 @@ class TaggingScrollable(rs.Scrollable):
                     owner = fallback_users[item['userid']]
                 except KeyError:
                     # If we can't find it, then use the slow fetch.
-                    owner = await bot.get_user(item['userid'])
+                    owner = await bot.fetch_user(item['userid'])
                     fallback_users[item['userid']] = owner
                 if not owner:
                     ret.append([item['tag'], "N/A"])
