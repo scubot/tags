@@ -171,3 +171,9 @@ class TestDispatcher:
         d.register('<foo>', lambda foo: 1)
         with pytest.raises(KeyError):
             d.register('<bar>', lambda bar: 2)
+
+    def test_register_AcceptsDifferentProcessors(self):
+        d = Dispatcher()
+        d.register('<foo:float>', lambda foo: 1)
+        d.register('<foo:int>', lambda foo: 2)
+        assert d.dispatch('0.5') == 1
