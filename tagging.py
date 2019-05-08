@@ -1,8 +1,9 @@
-import discord
 from discord.ext import commands
 from discord.utils import find
 from tinydb import TinyDB, Query
-import modules.reactionscroll as rs
+
+import reactionscroll as rs
+
 
 class TaggingScrollable(rs.Scrollable):
     async def preprocess(self, bot, db):
