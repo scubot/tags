@@ -15,11 +15,9 @@ setuptools.setup(
     install_requires=[
         "tinydb",
         "discord",
-        "reaction-scroll"
-    ],
-    dependency_links=[
-        "https://github.com/scubot/reaction-scroll/tarball/package#egg"
-        "=reaction-scroll-0.0.1.dev0",
+
+        "reaction-scroll @ git+https://github.com/scubot/reaction-scroll.git"
+        "@e99ad003bc9a96f6f287f9ec09c551abbb4ccefd"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
