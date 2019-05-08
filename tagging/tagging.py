@@ -1,5 +1,6 @@
 from discord.ext import commands
 from discord.utils import find
+from tinydb import TinyDB, Query
 
 import reactionscroll as rs
 
