@@ -117,7 +117,7 @@ class Tagging(commands.Cog):
         if self.db.get(target.tag == name) is None:
             await ctx.send("[!] The tag doesn't exist.")
             return
-        owner_name = str(ctx.bot.get_user(self.db.get(target.tag == name)))
+        owner_name = str(self.bot.fetch_user(self.db.get(target.tag == name)))
         await ctx.send_message("This tag was created by: **{}**".format(owner_name))
 
     @tag.command(name="list")
