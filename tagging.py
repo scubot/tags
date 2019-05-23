@@ -118,7 +118,7 @@ class Tagging(commands.Cog):
             await ctx.send("[!] The tag doesn't exist.")
             return
         owner_name = str(self.bot.fetch_user(self.db.get(target.tag == name)))
-        await ctx.send_message("This tag was created by: **{}**".format(owner_name))
+        await ctx.send("This tag was created by: **{}**".format(owner_name))
 
     @tag.command(name="list")
     async def list(self, ctx):
