@@ -29,9 +29,9 @@ class Tagging(commands.Cog):
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, name: str):
         """Print the contents of a given tag."""
-        await ctx.send(self._get_tag(ctx, name))
+        await ctx.send(self._get_tag(name))
 
-    def _get_tag(self, ctx: commands.Context, name: str) -> str:
+    def _get_tag(self, name: str) -> str:
         """Helper to get the contents of a tag."""
         try:
             return self.dao.get_contents(name)
@@ -76,7 +76,7 @@ class Tagging(commands.Cog):
     async def remove(self, ctx, name: str):
         """Delete a tag having a given name."""
         await ctx.send(self._remove_tag(ctx, name))
-        
+
     def _remove_tag(self, ctx: commands.Context, name: str) -> str:
         """Helper to get the removal string for a tag."""
         try:
