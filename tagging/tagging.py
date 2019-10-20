@@ -1,151 +1,119 @@
+"""Tagging module for Scubot."""
 from discord.ext import commands
-from discord.utils import find
-from tinydb import TinyDB, Query
-
 import reactionscroll as rs
+import tinydb
 
-
-class TaggingScrollable(rs.Scrollable):
-    async def preprocess(self, bot, db):
-        fallback_users = {}
-        ret = []
-        for item in db:
-            owner = find(lambda o: o.id == item['userid'], list(bot.get_all_members()))
-            if not owner:
-                # First try getting from caching dict
-                try:
-                    owner = fallback_users[item['userid']]
-                except KeyError:
-                    # If we can't find it, then use the slow fetch.
-                    owner = await bot.fetch_user(item['userid'])
-                    fallback_users[item['userid']] = owner
-                if not owner:
-                    ret.append([item['tag'], "N/A"])
-            ret.append([item['tag'], owner.name])
-        return ret
-
-    async def refresh(self, bot, db):
-        self.processed_data.clear()
-        self.embeds.clear()
-        self.processed_data = await self.preprocess(bot, db)
-        self.create_embeds()
+from tagging import database
 
 
 class Tagging(commands.Cog):
-    protected_names = ['new', 'edit', 'remove', 'owner']
-    scrolling_cache = []
+    """Tagging Cog for Scubot."""
+    PROTECTED_NAMES = ['new', 'edit', 'remove', 'owner']
 
-    # Helper functions for scrolling
-    async def contains_returns(self, message):
-        for x in self.scrolling_cache:
-            if message.id == x[0].id:
-                return True
-        return False
+    def __init__(self,
+                 bot: commands.Bot,
+                 scroll_builder: rs.ScrollViewBuilder,
+                 dao: database.DAO):
+        """Constructor for tagging module.
 
-    async def find_pos(self, message):
-        for x in self.scrolling_cache:
-            if message.id == x[0].id:
-                return x[1]
-
-    async def update_pos(self, message, ty):
-        for x in self.scrolling_cache:
-            if message.id == x[0].id:
-                if ty == 'next':
-                    x[1] += 1
-                if ty == 'prev':
-                    x[1] -= 1
-
-    def __init__(self, bot):
+        Args:
+            bot: Discord bot to which the cog will be attached.
+            scroll_builder: The builder used to create Scrollable Embeds.
+            database: DAO for the tagging database.
+        """
         self.version = "2.0.0"
         self.bot = bot
-        self.db = TinyDB('./modules/databases/tagging')
-        self.scroll = TaggingScrollable(limit=6, color=0xc0fefe, table=self.db, title="List of tags", inline=True)
+        self.scroll_builder = scroll_builder
+        self.dao = dao
 
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, name: str):
-        target = Query()
-        if self.db.get(target.tag == name) is None:
-            await ctx.send("[!] This tag does not exist.")
-            return
-        await ctx.send(self.db.get(target.tag == name)['content'])
-        return
+        """Print the contents of a given tag."""
+        await ctx.send(self._get_tag(ctx, name))
+
+    def _get_tag(self, ctx: commands.Context, name: str) -> str:
+        """Helper to get the contents of a tag."""
+        try:
+            return self.dao.get_contents(name)
+        except KeyError:
+            return "[!] This tag does not exist."
 
     @tag.command(name="new")
     async def new(self, ctx, name: str, *, content: str):
-        target = Query()
-        if name in self.protected_names:
-            await ctx.send("[!] The tag you are trying to create is a protected name.")
-            return
-        if not content:
-            await ctx.send("[!] No content specified?")
-            return
-        if self.db.get(target.tag == name) is not None:
-            await ctx.send("[!] This tag already exists.")
-            return
-        self.db.insert({'userid': ctx.author.id, 'tag': name, 'content': content})
-        await ctx.send("[:ok_hand:] Tag added.")
-        return
+        """Create a new tag."""
+        await ctx.send(self._new_tag(ctx, name, content))
+
+    def _new_tag(self, ctx: commands.Context, name: str, content: str) -> str:
+        """Helper to get the creation string for a tag."""
+        if name in self.PROTECTED_NAMES:
+            return "[!] The tag you are trying to create is a protected name."
+        try:
+            self.dao.create_tag(name, content, ctx.author.id)
+            return "[:ok_hand:] Tag added."
+        except KeyError:
+            return "[!] This tag already exists."
+        except ValueError:
+            return "[!] No content specified?"
 
     @tag.command(name="edit")
     async def edit(self, ctx, name: str, *, content: str):
-        target = Query()
-        if self.db.get(target.tag == name)['userid'] != ctx.author.id:
-            await ctx.send("[!] You do not have permission to edit this.")
-            return
-        if self.db.get(target.tag == name) is None:
-            await ctx.send("[!] The tag doesn't exist.")
-            return
-        self.db.update({'content': content}, target.tag == name)
-        await ctx.send("[:ok_hand:] Tag updated.")
-        return
+        """Replace contents of tag."""
+        await ctx.send(self._edit_tag(ctx, name, content))
+
+    def _edit_tag(self, ctx: commands.Context, name: str, content: str) -> str:
+        """Helper to get the edit string for a given tag."""
+        try:
+            self.dao.update_tag(name, content, ctx.author.id)
+            return "[:ok_hand:] Tag updated."
+        except PermissionError:
+            return "[!] You do not have permission to edit this."
+        except KeyError:
+            return "[!] The tag doesn't exist."
+        except ValueError:
+            return "[!] No content specified?"
 
     @tag.command(name="remove")
     async def remove(self, ctx, name: str):
-        target = Query()
-        if self.db.get(target.tag == name)['userid'] != ctx.author.id:
-            await ctx.send("[!] You do not have permission to edit this.")
-            return
-        if self.db.get(target.tag == name) is None:
-            await ctx.send("[!] The tag doesn't exist.")
-            return
-        self.db.remove(target.tag == name)
-        await ctx.send("[:ok_hand:] Tag removed.")
-        return
+        """Delete a tag having a given name."""
+        await ctx.send(self._remove_tag(ctx, name))
+        
+    def _remove_tag(self, ctx: commands.Context, name: str) -> str:
+        """Helper to get the removal string for a tag."""
+        try:
+            self.dao.delete_tag(name, ctx.author.id)
+            return "[:ok_hand:] Tag removed."
+        except PermissionError:
+            return "[!] You do not have permission to do this."
+        except KeyError:
+            return "[!] The tag doesn't exist."
 
     @tag.command(name="owner")
     async def owner(self, ctx, name: str):
-        target = Query()
-        if self.db.get(target.tag == name) is None:
-            await ctx.send("[!] The tag doesn't exist.")
-            return
-        owner_name = str(ctx.bot.get_user(self.db.get(target.tag == name)))
-        await ctx.send_message("This tag was created by: **{}**".format(owner_name))
+        """Print the owner of a given tag."""
+        await ctx.send(self._tag_owner(ctx, name))
+
+    def _tag_owner(self, ctx: commands.Context, name: str) -> str:
+        """Helper to get the owner string for a given tag."""
+        try:
+            tag = self.dao.get_tag(name)
+            owner = ctx.bot.get_user(tag.owner)
+            if not owner:
+                return "[!] Owner has left discord."
+            return "This tag was created by: **{}**".format(str(owner))
+        except KeyError:
+            return "[!] The tag doesn't exist."
 
     @tag.command(name="list")
     async def list(self, ctx):
-        await self.scroll.refresh(self.bot, self.db)
-        m = await ctx.send(embed=self.scroll.initial_embed())
-        self.scrolling_cache.append([m, 0])
-        await m.add_reaction("⏪")
-        await m.add_reaction("⏩")
-
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
-        if not await self.contains_returns(reaction.message):
-            return
-        pos = await self.find_pos(reaction.message)
-        react_text = reaction.emoji
-        if type(reaction.emoji) is not str:
-            react_text = reaction.emoji.name
-        if react_text == "⏩":
-            embed = self.scroll.next(current_pos=pos)
-            await reaction.message.edit(embed=embed)
-            await self.update_pos(reaction.message, 'next')
-        if react_text == "⏪":
-            embed = self.scroll.previous(current_pos=pos)
-            await reaction.message.edit(embed=embed)
-            await self.update_pos(reaction.message, 'prev')
+        """Create a scrollable list of all tags."""
 
 
 def setup(bot):
-    bot.add_cog(Tagging(bot))
+    """API endpoint that allows the module to be loaded dynamically."""
+    scroll_builder = rs.ScrollViewBuilder(
+        bot=bot,
+        color=0xc0fefe,
+        title="List of tags",
+        inline=True)
+    dao = database.TinyDbDao(tinydb.TinyDB('./modules/databases/tagging'))
+    bot.add_cog(Tagging(bot, scroll_builder, dao))
