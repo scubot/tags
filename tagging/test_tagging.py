@@ -75,10 +75,10 @@ class TestTagging:
 
         cog = tagging.Tagging(None, None, dao)
         ctx = Context(None, Member('bob', 1))
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
         assert cog._remove_tag(ctx, "foo") == \
             "[!] You do not have permission to do this."
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
 
     def test_remove_success(self):
         dao = DictDao()
@@ -86,9 +86,9 @@ class TestTagging:
 
         cog = tagging.Tagging(None, None, dao)
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
         assert cog._remove_tag(ctx, "foo") == "[:ok_hand:] Tag removed."
-        assert cog._get_tag(ctx, "foo") == "[!] This tag does not exist."
+        assert cog._get_tag("foo") == "[!] This tag does not exist."
 
     def test_create_empty(self):
         dao = DictDao()
@@ -103,9 +103,9 @@ class TestTagging:
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
         assert cog._new_tag(ctx, "foo", "baz") == "[!] This tag already exists."
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
 
     def test_create_protected(self):
         dao = DictDao()
@@ -114,7 +114,7 @@ class TestTagging:
         ctx = Context(None, Member('bob', 0))
         assert cog._new_tag(ctx, "new", "bar") == \
             "[!] The tag you are trying to create is a protected name."
-        assert cog._get_tag(ctx, "new") == "[!] This tag does not exist."
+        assert cog._get_tag("new") == "[!] This tag does not exist."
     
     def test_create_success(self):
         dao = DictDao()
@@ -122,7 +122,7 @@ class TestTagging:
 
         ctx = Context(None, Member('bob', 0))
         assert cog._new_tag(ctx, "foo", "bar") == "[:ok_hand:] Tag added."
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
 
     def test_get_tag_success(self):
         dao = DictDao()
@@ -130,14 +130,14 @@ class TestTagging:
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag(ctx, "foo") == "bar"
+        assert cog._get_tag("foo") == "bar"
 
     def test_get_tag_nonexistent(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag(ctx, "foo") == "[!] This tag does not exist."
+        assert cog._get_tag("foo") == "[!] This tag does not exist."
 
     def test_edit_tag_nonexistent(self):
         dao = DictDao()
@@ -170,7 +170,7 @@ class TestTagging:
 
         ctx = Context(None, Member('bob', 0))
         assert cog._edit_tag(ctx, "foo", "baz") == "[:ok_hand:] Tag updated."
-        assert cog._get_tag(ctx, "foo") == "baz"
+        assert cog._get_tag("foo") == "baz"
 
     def test_owner_tagNonexistent(self):
         dao = DictDao()
