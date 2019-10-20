@@ -17,7 +17,7 @@ setuptools.setup(
         "discord",
 
         "reaction-scroll @ git+https://github.com/scubot/reaction-scroll.git"
-        "@e99ad003bc9a96f6f287f9ec09c551abbb4ccefd"
+        "@prototype"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
