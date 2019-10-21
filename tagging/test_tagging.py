@@ -61,136 +61,194 @@ class Context:
         self.bot = bot
         self.author = author
 
+    async def send(self, content: str):
+        self.last_content = content
+
+
 class TestTagging:
-    def test_remove_nonexistent(self):
+    async def test_remove_nonexistent(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._remove_tag(ctx, "foo") == "[!] The tag doesn't exist."
+        await cog.remove.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] The tag doesn't exist."
 
-    def test_remove_notOwner(self):
+    async def test_remove_notOwner(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
 
         cog = tagging.Tagging(None, None, dao)
         ctx = Context(None, Member('bob', 1))
-        assert cog._get_tag("foo") == "bar"
-        assert cog._remove_tag(ctx, "foo") == \
-            "[!] You do not have permission to do this."
-        assert cog._get_tag("foo") == "bar"
 
-    def test_remove_success(self):
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+        await cog.remove.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] You do not have permission to do this."
+
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+    async def test_remove_success(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
 
         cog = tagging.Tagging(None, None, dao)
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag("foo") == "bar"
-        assert cog._remove_tag(ctx, "foo") == "[:ok_hand:] Tag removed."
-        assert cog._get_tag("foo") == "[!] This tag does not exist."
 
-    def test_create_empty(self):
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+        await cog.remove.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[:ok_hand:] Tag removed."
+
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] This tag does not exist."
+
+    async def test_create_empty(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._new_tag(ctx, "foo", "") == "[!] No content specified?"
 
-    def test_create_duplicate(self):
+        await cog.new.callback(cog, ctx, "foo", content="")
+        assert ctx.last_content == "[!] No content specified?"
+
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] This tag does not exist."
+
+    async def test_create_duplicate(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag("foo") == "bar"
-        assert cog._new_tag(ctx, "foo", "baz") == "[!] This tag already exists."
-        assert cog._get_tag("foo") == "bar"
 
-    def test_create_protected(self):
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+        await cog.new.callback(cog, ctx, "foo", content="baz")
+        assert ctx.last_content == "[!] This tag already exists."
+
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+    async def test_create_protected(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._new_tag(ctx, "new", "bar") == \
+
+        await cog.new.callback(cog, ctx, "new", content="bar")
+        assert ctx.last_content == \
             "[!] The tag you are trying to create is a protected name."
-        assert cog._get_tag("new") == "[!] This tag does not exist."
+
+        await cog.tag.callback(cog, ctx, "new")
+        assert ctx.last_content == "[!] This tag does not exist."
     
-    def test_create_success(self):
+    async def test_create_success(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._new_tag(ctx, "foo", "bar") == "[:ok_hand:] Tag added."
-        assert cog._get_tag("foo") == "bar"
 
-    def test_get_tag_success(self):
+        await cog.new.callback(cog, ctx, "foo", content="bar")
+        assert ctx.last_content == "[:ok_hand:] Tag added."
+
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+    async def test_get_tag_success(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag("foo") == "bar"
 
-    def test_get_tag_nonexistent(self):
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+    async def test_get_tag_nonexistent(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._get_tag("foo") == "[!] This tag does not exist."
 
-    def test_edit_tag_nonexistent(self):
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] This tag does not exist."
+
+    async def test_edit_tag_nonexistent(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._edit_tag(ctx, "foo", "bar") == "[!] The tag doesn't exist."
 
-    def test_edit_tag_notOwner(self):
+        await cog.edit.callback(cog, ctx, "foo", content="bar")
+        assert ctx.last_content == "[!] The tag doesn't exist."
+
+    async def test_edit_tag_notOwner(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 1))
-        assert cog._edit_tag(ctx, "foo", "baz") == \
+
+        await cog.edit.callback(cog, ctx, "foo", content="baz")
+        assert ctx.last_content == \
             "[!] You do not have permission to edit this."
 
-    def test_edit_tag_empty(self):
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "bar"
+
+    async def test_edit_tag_empty(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._edit_tag(ctx, "foo", "") == "[!] No content specified?"
 
-    def test_edit_success(self):
+        await cog.edit.callback(cog, ctx, "foo", content="")
+        assert ctx.last_content == "[!] No content specified?"
+
+    async def test_edit_success(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(None, Member('bob', 0))
-        assert cog._edit_tag(ctx, "foo", "baz") == "[:ok_hand:] Tag updated."
-        assert cog._get_tag("foo") == "baz"
 
-    def test_owner_tagNonexistent(self):
+        await cog.edit.callback(cog, ctx, "foo", content="baz")
+        assert ctx.last_content == "[:ok_hand:] Tag updated."
+
+        await cog.tag.callback(cog, ctx, "foo")
+        assert ctx.last_content == "baz"
+
+    async def test_owner_tagNonexistent(self):
         dao = DictDao()
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(Bot('bob'), Member('bob', 0))
-        assert cog._tag_owner(ctx, 'foo') == "[!] The tag doesn't exist."
 
-    def test_owner_ownerNonexistent(self):
+        await cog.owner.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] The tag doesn't exist."
+
+    async def test_owner_ownerNonexistent(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(UserNotFoundBot(), Member('bob', 0))
-        assert cog._tag_owner(ctx, 'foo') == "[!] Owner has left discord."
 
-    def test_owner_success(self):
+        await cog.owner.callback(cog, ctx, "foo")
+        assert ctx.last_content == "[!] Owner has left discord."
+
+    async def test_owner_success(self):
         dao = DictDao()
         dao.create_tag('foo', 'bar', 0)
         cog = tagging.Tagging(None, None, dao)
 
         ctx = Context(Bot('bob'), Member('bob', 0))
-        assert cog._tag_owner(ctx, 'foo') == "This tag was created by: **bob#0000**"
+
+        await cog.owner.callback(cog, ctx, "foo")
+        assert ctx.last_content == "This tag was created by: **bob#0000**"
