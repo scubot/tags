@@ -29,79 +29,59 @@ class Tagging(commands.Cog):
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, name: str):
         """Print the contents of a given tag."""
-        await ctx.send(self._get_tag(name))
-
-    def _get_tag(self, name: str) -> str:
-        """Helper to get the contents of a tag."""
         try:
-            return self.dao.get_contents(name)
+            await ctx.send(self.dao.get_contents(name))
         except KeyError:
-            return "[!] This tag does not exist."
+            await ctx.send("[!] This tag does not exist.")
 
     @tag.command(name="new")
     async def new(self, ctx, name: str, *, content: str):
         """Create a new tag."""
-        await ctx.send(self._new_tag(ctx, name, content))
-
-    def _new_tag(self, ctx: commands.Context, name: str, content: str) -> str:
-        """Helper to get the creation string for a tag."""
         if name in self.PROTECTED_NAMES:
-            return "[!] The tag you are trying to create is a protected name."
+            await ctx.send("[!] The tag you are trying to create is a protected name.")
         try:
             self.dao.create_tag(name, content, ctx.author.id)
-            return "[:ok_hand:] Tag added."
+            await ctx.send("[:ok_hand:] Tag added.")
         except KeyError:
-            return "[!] This tag already exists."
+            await ctx.send("[!] This tag already exists.")
         except ValueError:
-            return "[!] No content specified?"
+            await ctx.send("[!] No content specified?")
 
     @tag.command(name="edit")
     async def edit(self, ctx, name: str, *, content: str):
         """Replace contents of tag."""
-        await ctx.send(self._edit_tag(ctx, name, content))
-
-    def _edit_tag(self, ctx: commands.Context, name: str, content: str) -> str:
-        """Helper to get the edit string for a given tag."""
         try:
             self.dao.update_tag(name, content, ctx.author.id)
-            return "[:ok_hand:] Tag updated."
+            await ctx.send("[:ok_hand:] Tag updated.")
         except PermissionError:
-            return "[!] You do not have permission to edit this."
+            await ctx.send("[!] You do not have permission to edit this.")
         except KeyError:
-            return "[!] The tag doesn't exist."
+            await ctx.send("[!] The tag doesn't exist.")
         except ValueError:
-            return "[!] No content specified?"
+            await ctx.send("[!] No content specified?")
 
     @tag.command(name="remove")
     async def remove(self, ctx, name: str):
         """Delete a tag having a given name."""
-        await ctx.send(self._remove_tag(ctx, name))
-
-    def _remove_tag(self, ctx: commands.Context, name: str) -> str:
-        """Helper to get the removal string for a tag."""
         try:
             self.dao.delete_tag(name, ctx.author.id)
-            return "[:ok_hand:] Tag removed."
+            await ctx.send("[:ok_hand:] Tag removed.")
         except PermissionError:
-            return "[!] You do not have permission to do this."
+            await ctx.send("[!] You do not have permission to do this.")
         except KeyError:
-            return "[!] The tag doesn't exist."
+            await ctx.send("[!] The tag doesn't exist.")
 
     @tag.command(name="owner")
     async def owner(self, ctx, name: str):
         """Print the owner of a given tag."""
-        await ctx.send(self._tag_owner(ctx, name))
-
-    def _tag_owner(self, ctx: commands.Context, name: str) -> str:
-        """Helper to get the owner string for a given tag."""
         try:
             tag = self.dao.get_tag(name)
             owner = ctx.bot.get_user(tag.owner)
             if not owner:
-                return "[!] Owner has left discord."
-            return "This tag was created by: **{}**".format(str(owner))
+                await ctx.send("[!] Owner has left discord.")
+            await ctx.send("This tag was created by: **{}**".format(str(owner)))
         except KeyError:
-            return "[!] The tag doesn't exist."
+            await ctx.send("[!] The tag doesn't exist.")
 
     @tag.command(name="list")
     async def list(self, ctx):
