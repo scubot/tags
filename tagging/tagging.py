@@ -39,6 +39,7 @@ class Tagging(commands.Cog):
         """Create a new tag."""
         if name in self.PROTECTED_NAMES:
             await ctx.send("[!] The tag you are trying to create is a protected name.")
+            return
         try:
             self.dao.create_tag(name, content, ctx.author.id)
             await ctx.send("[:ok_hand:] Tag added.")
@@ -79,6 +80,7 @@ class Tagging(commands.Cog):
             owner = ctx.bot.get_user(tag.owner)
             if not owner:
                 await ctx.send("[!] Owner has left discord.")
+                return
             await ctx.send("This tag was created by: **{}**".format(str(owner)))
         except KeyError:
             await ctx.send("[!] The tag doesn't exist.")
