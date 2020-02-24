@@ -1,101 +1,150 @@
 import discord
-from modules.botModule import *
-import shlex
-import time
+from discord.ext import commands
+from discord.utils import find
+from tinydb import TinyDB, Query
+import modules.reactionscroll as rs
 
-class Tagging(BotModule):
-    name = 'tagging'
+class TaggingScrollable(rs.Scrollable):
+    async def preprocess(self, bot, db):
+        fallback_users = {}
+        ret = []
+        for item in db:
+            owner = find(lambda o: o.id == item['userid'], list(bot.get_all_members()))
+            if not owner:
+                # First try getting from caching dict
+                try:
+                    owner = fallback_users[item['userid']]
+                except KeyError:
+                    # If we can't find it, then use the slow fetch.
+                    owner = await bot.fetch_user(item['userid'])
+                    fallback_users[item['userid']] = owner
+                if not owner:
+                    ret.append([item['tag'], "N/A"])
+            ret.append([item['tag'], owner.name])
+        return ret
 
-    description = 'Allows for user-defined tags.'
+    async def refresh(self, bot, db):
+        self.processed_data.clear()
+        self.embeds.clear()
+        self.processed_data = await self.preprocess(bot, db)
+        self.create_embeds()
 
-    help_text = '`!tag new [name] [content]` to create a new tag. \n' \
-                '`!tag edit [name] [newcontent]` to edit an existing tag. You must be the creator of the tag to edit it.\n' \
-                '`!tag remove [name]` to remove a tag. You must be the creator of the tag to remove it.\n' \
-                '`!tag owner [name]` to fetch the user who created a tag and is able to make changes to it.\n' \
-                '`!tag [name]` to retrieve a tag.' 
 
-    trigger_string = 'tag'
+class Tagging(commands.Cog):
+    protected_names = ['new', 'edit', 'remove', 'owner']
+    scrolling_cache = []
 
-    module_version = '1.1.0'
+    # Helper functions for scrolling
+    async def contains_returns(self, message):
+        for x in self.scrolling_cache:
+            if message.id == x[0].id:
+                return True
+        return False
 
-    listen_for_reaction = False
+    async def find_pos(self, message):
+        for x in self.scrolling_cache:
+            if message.id == x[0].id:
+                return x[1]
 
-    protected_names = ['new', 'edit', 'remove', 'owner', 'list'] # These are protected names that cannot be used as a tag.
+    async def update_pos(self, message, ty):
+        for x in self.scrolling_cache:
+            if message.id == x[0].id:
+                if ty == 'next':
+                    x[1] += 1
+                if ty == 'prev':
+                    x[1] -= 1
 
-    async def parse_command(self, message, client):
-        msg = shlex.split(message.content)
+    def __init__(self, bot):
+        self.version = "2.0.0"
+        self.bot = bot
+        self.db = TinyDB('./modules/databases/tagging')
+        self.scroll = TaggingScrollable(limit=6, color=0xc0fefe, table=self.db, title="List of tags", inline=True)
+
+    @commands.group(invoke_without_command=True)
+    async def tag(self, ctx, name: str):
         target = Query()
-        if len(msg) > 1:
-            if len(msg) > 2:
-                msg[2] = msg[2].lower()
-            if msg[1] == "new":
-                if msg[2] in self.protected_names:
-                    send_msg = "[!] The tag you are trying to create is a protected name. Please choose another name."
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    if len(msg) != 4:
-                        send_msg = "[!] Invalid arguments."
-                        await client.send_message(message.channel, send_msg)
-                    else:
-                        if self.module_db.get(target.tag == msg[2]) is not None:
-                            send_msg = "[!] This tag already exists."
-                            await client.send_message(message.channel, send_msg)
-                        else:
-                            self.module_db.insert({'userid': message.author.id, 'tag': msg[2], 'content': msg[3]})
-                            send_msg = "[:ok_hand:] Tag added."
-                            await client.send_message(message.channel, send_msg)
-            elif msg[1] == "edit":
-                if len(msg) != 4:
-                    send_msg = "[!] Invalid arguments."
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    if self.module_db.get(target.tag == msg[2])['userid'] != message.author.id:
-                        send_msg = "[!] You do not have permission to edit this."
-                        await client.send_message(message.channel, send_msg)
-                    else:
-                        self.module_db.update({'content': msg[3]}, target.tag == msg[2])
-                        send_msg = "[:ok_hand:] Tag updated."
-                        await client.send_message(message.channel, send_msg)
-            elif msg[1] == "remove":
-                if len(msg) != 3:
-                    send_msg = "[!] Invalid arguments."
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    if self.module_db.get(target.tag == msg[2])['userid'] != message.author.id:
-                        send_msg = "[!] You do not have permission to remove this."
-                        await client.send_message(message.channel, send_msg)
-                    else:
-                        self.module_db.remove(target.tag == msg[2])
-                        send_msg = "[:ok_hand:] Tag removed."
-                        await client.send_message(message.channel, send_msg)
-            elif msg[1] == "list": # This is completely untested, plz test before prod
-                if len(msg) > 2:
-                    send_msg = "[!] Too many arguments"
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    send_msg = "The following tags exist: \n"
-                    for i in self.module_db:
-                        send_msg += "\n"
-                        send_msg += i['tag']
-                    await client.send_message(message.channel, send_msg)
-            elif msg[1] == "owner":
-                if len(msg) != 3:
-                    send_msg = "[!] Invalid arguments."
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    tag = self.module_db.get(target.tag == msg[2])
-                    if tag is None:
-                        send_msg = "[!] This tag does not exist."
-                        await client.send_message(message.channel, send_msg)
-                    else:
-                        owner = await client.get_user_info(tag['userid'])
-                        send_msg = "This tag was created by: **{}**".format(owner.name)
-                        await client.send_message(message.channel, send_msg)
-            else:
-                msg[1] = msg[1].lower()
-                if self.module_db.get(target.tag == msg[1]) is None:
-                    send_msg = "[!] This tag does not exist."
-                    await client.send_message(message.channel, send_msg)
-                else:
-                    send_msg = self.module_db.get(target.tag == msg[1])['content']
-                    await client.send_message(message.channel, send_msg)
+        if self.db.get(target.tag == name) is None:
+            await ctx.send("[!] This tag does not exist.")
+            return
+        await ctx.send(self.db.get(target.tag == name)['content'])
+        return
+
+    @tag.command(name="new")
+    async def new(self, ctx, name: str, *, content: str):
+        target = Query()
+        if name in self.protected_names:
+            await ctx.send("[!] The tag you are trying to create is a protected name.")
+            return
+        if not content:
+            await ctx.send("[!] No content specified?")
+            return
+        if self.db.get(target.tag == name) is not None:
+            await ctx.send("[!] This tag already exists.")
+            return
+        self.db.insert({'userid': ctx.author.id, 'tag': name, 'content': content})
+        await ctx.send("[:ok_hand:] Tag added.")
+        return
+
+    @tag.command(name="edit")
+    async def edit(self, ctx, name: str, *, content: str):
+        target = Query()
+        if self.db.get(target.tag == name)['userid'] != ctx.author.id:
+            await ctx.send("[!] You do not have permission to edit this.")
+            return
+        if self.db.get(target.tag == name) is None:
+            await ctx.send("[!] The tag doesn't exist.")
+            return
+        self.db.update({'content': content}, target.tag == name)
+        await ctx.send("[:ok_hand:] Tag updated.")
+        return
+
+    @tag.command(name="remove")
+    async def remove(self, ctx, name: str):
+        target = Query()
+        if self.db.get(target.tag == name)['userid'] != ctx.author.id:
+            await ctx.send("[!] You do not have permission to edit this.")
+            return
+        if self.db.get(target.tag == name) is None:
+            await ctx.send("[!] The tag doesn't exist.")
+            return
+        self.db.remove(target.tag == name)
+        await ctx.send("[:ok_hand:] Tag removed.")
+        return
+
+    @tag.command(name="owner")
+    async def owner(self, ctx, name: str):
+        target = Query()
+        if self.db.get(target.tag == name) is None:
+            await ctx.send("[!] The tag doesn't exist.")
+            return
+        owner_name = str(await self.bot.fetch_user(self.db.get(target.tag == name)['userid']))
+        await ctx.send("This tag was created by: **{}**".format(owner_name))
+
+    @tag.command(name="list")
+    async def list(self, ctx):
+        await self.scroll.refresh(self.bot, self.db)
+        m = await ctx.send(embed=self.scroll.initial_embed())
+        self.scrolling_cache.append([m, 0])
+        await m.add_reaction("⏪")
+        await m.add_reaction("⏩")
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        if not await self.contains_returns(reaction.message):
+            return
+        pos = await self.find_pos(reaction.message)
+        react_text = reaction.emoji
+        if type(reaction.emoji) is not str:
+            react_text = reaction.emoji.name
+        if react_text == "⏩":
+            embed = self.scroll.next(current_pos=pos)
+            await reaction.message.edit(embed=embed)
+            await self.update_pos(reaction.message, 'next')
+        if react_text == "⏪":
+            embed = self.scroll.previous(current_pos=pos)
+            await reaction.message.edit(embed=embed)
+            await self.update_pos(reaction.message, 'prev')
+
+
+def setup(bot):
+    bot.add_cog(Tagging(bot))
