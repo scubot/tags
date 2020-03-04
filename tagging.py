@@ -1,64 +1,37 @@
-import discord
+from typing import List
+
 from discord.ext import commands
 from discord.utils import find
 from tinydb import TinyDB, Query
-import modules.reactionscroll as rs
+from modules.dispatch import EmbedChain, EmbedEntry
+from util.missingdependency import MissingDependencyException
 
-class TaggingScrollable(rs.Scrollable):
-    async def preprocess(self, bot, db):
+
+class Tagging(commands.Cog):
+    protected_names = ['new', 'edit', 'remove', 'owner']
+
+    def __init__(self, bot):
+        self.version = "3.0.0"
+        self.bot = bot
+        self.db = TinyDB('./modules/databases/tagging')
+
+    async def make_entries(self) -> List[EmbedEntry]:
         fallback_users = {}
         ret = []
-        for item in db:
-            owner = find(lambda o: o.id == item['userid'], list(bot.get_all_members()))
+        for item in self.db:
+            owner = find(lambda o: o.id == item['userid'], list(self.bot.get_all_members()))
             if not owner:
                 # First try getting from caching dict
                 try:
                     owner = fallback_users[item['userid']]
                 except KeyError:
                     # If we can't find it, then use the slow fetch.
-                    owner = await bot.fetch_user(item['userid'])
+                    owner = await self.bot.fetch_user(item['userid'])
                     fallback_users[item['userid']] = owner
                 if not owner:
-                    ret.append([item['tag'], "N/A"])
-            ret.append([item['tag'], owner.name])
+                    ret.append(EmbedEntry(item['tag'], "N/A"))
+            ret.append(EmbedEntry(item['tag'], owner.name))
         return ret
-
-    async def refresh(self, bot, db):
-        self.processed_data.clear()
-        self.embeds.clear()
-        self.processed_data = await self.preprocess(bot, db)
-        self.create_embeds()
-
-
-class Tagging(commands.Cog):
-    protected_names = ['new', 'edit', 'remove', 'owner']
-    scrolling_cache = []
-
-    # Helper functions for scrolling
-    async def contains_returns(self, message):
-        for x in self.scrolling_cache:
-            if message.id == x[0].id:
-                return True
-        return False
-
-    async def find_pos(self, message):
-        for x in self.scrolling_cache:
-            if message.id == x[0].id:
-                return x[1]
-
-    async def update_pos(self, message, ty):
-        for x in self.scrolling_cache:
-            if message.id == x[0].id:
-                if ty == 'next':
-                    x[1] += 1
-                if ty == 'prev':
-                    x[1] -= 1
-
-    def __init__(self, bot):
-        self.version = "2.0.0"
-        self.bot = bot
-        self.db = TinyDB('./modules/databases/tagging')
-        self.scroll = TaggingScrollable(limit=6, color=0xc0fefe, table=self.db, title="List of tags", inline=True)
 
     @commands.group(invoke_without_command=True)
     async def tag(self, ctx, name: str):
@@ -122,29 +95,14 @@ class Tagging(commands.Cog):
 
     @tag.command(name="list")
     async def list(self, ctx):
-        await self.scroll.refresh(self.bot, self.db)
-        m = await ctx.send(embed=self.scroll.initial_embed())
-        self.scrolling_cache.append([m, 0])
-        await m.add_reaction("⏪")
-        await m.add_reaction("⏩")
-
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
-        if not await self.contains_returns(reaction.message):
-            return
-        pos = await self.find_pos(reaction.message)
-        react_text = reaction.emoji
-        if type(reaction.emoji) is not str:
-            react_text = reaction.emoji.name
-        if react_text == "⏩":
-            embed = self.scroll.next(current_pos=pos)
-            await reaction.message.edit(embed=embed)
-            await self.update_pos(reaction.message, 'next')
-        if react_text == "⏪":
-            embed = self.scroll.previous(current_pos=pos)
-            await reaction.message.edit(embed=embed)
-            await self.update_pos(reaction.message, 'prev')
+        dispatcher = self.bot.get_cog("Dispatcher")
+        if not dispatcher:
+            raise MissingDependencyException("Dispatcher")
+        embed = EmbedChain(await self.make_entries(), limit=6, color=0xc0fefe, title="List of tags", inline=True)
+        await dispatcher.register(await ctx.send(embed=embed.current()), embed)
 
 
 def setup(bot):
+    if not bot.get_cog("Dispatcher"):
+        raise MissingDependencyException("Dispatcher")
     bot.add_cog(Tagging(bot))
